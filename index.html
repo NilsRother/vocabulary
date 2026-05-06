@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mein Vokabeltrainer</title>
+    <title>Vokabeltrainer Pro</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
+            background-color: #f0f2f5;
             color: #333;
             display: flex;
             justify-content: center;
@@ -17,40 +17,50 @@
         }
         .container {
             background-color: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             text-align: center;
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
         }
-        h1 { margin-top: 0; color: #2c3e50; }
-        input[type="file"] { margin: 20px 0; }
+        h1 { color: #1a73e8; margin-bottom: 30px; }
+        input[type="file"] { margin-bottom: 20px; }
         input[type="text"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 16px;
+            width: 100%;
+            padding: 12px;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.3s;
         }
+        input[type="text"]:focus { border-color: #1a73e8; }
         button {
-            background-color: #3498db;
+            background-color: #1a73e8;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            padding: 12px 30px;
+            border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            width: 100%;
         }
-        button:hover { background-color: #2980b9; }
+        button:hover { background-color: #1557b0; }
         #quiz-section { display: none; }
-        #feedback { font-weight: bold; margin-top: 15px; min-height: 48px; }
-        .correct { color: #27ae60; }
-        .almost-correct { color: #d35400; } /* Orange für fast richtige Antworten */
+        #feedback { 
+            font-weight: 500; 
+            margin-top: 20px; 
+            min-height: 60px;
+            line-height: 1.4;
+        }
+        .correct { color: #2ecc71; }
+        .almost-correct { color: #f39c12; }
         .incorrect { color: #e74c3c; }
-        #progress { margin-top: 20px; font-size: 14px; color: #7f8c8d; }
+        #progress { margin-top: 25px; font-size: 14px; color: #666; border-top: 1px solid #eee; padding-top: 15px; }
+        small { display: block; margin-top: 5px; color: #555; }
     </style>
 </head>
 <body>
@@ -59,14 +69,14 @@
     <h1>Vokabeltrainer</h1>
 
     <div id="upload-section">
-        <p>Lade eine Textdatei hoch (.txt oder .csv).<br>Format pro Zeile: <b>Wort,Übersetzung</b></p>
+        <p>Lade deine Vokabelliste hoch (.txt / .csv)</p>
         <input type="file" id="fileInput" accept=".txt, .csv">
+        <p style="font-size: 0.8em; color: #888;">Format: Wort, Übersetzung 1; Übersetzung 2</p>
     </div>
 
     <div id="quiz-section">
-        <h2 id="word-display">Lade Vokabeln...</h2>
-        <input type="text" id="answer-input" placeholder="Deine Übersetzung..." autocomplete="off">
-        <br>
+        <h2 id="word-display">...</h2>
+        <input type="text" id="answer-input" placeholder="Antwort eingeben..." autocomplete="off">
         <button onclick="checkAnswer()">Prüfen</button>
         <p id="feedback"></p>
         <div id="progress"></div>
@@ -77,31 +87,17 @@
     let vocabList = [];
     let currentIndex = 0;
 
-    // Levenshtein-Distanz berechnen (zählt die Tippfehler)
+    // Distanz-Algorithmus für Tippfehler
     function getEditDistance(a, b) {
         if (a.length === 0) return b.length;
         if (b.length === 0) return a.length;
-
         const matrix = [];
-
-        for (let i = 0; i <= b.length; i++) {
-            matrix[i] = [i];
-        }
-        for (let j = 0; j <= a.length; j++) {
-            matrix[0][j] = j;
-        }
-
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
         for (let i = 1; i <= b.length; i++) {
             for (let j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1, // Ersetzen
-                        Math.min(matrix[i][j - 1] + 1, // Einfügen
-                                 matrix[i - 1][j] + 1) // Löschen
-                    );
-                }
+                if (b.charAt(i - 1) === a.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1];
+                else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
             }
         }
         return matrix[b.length][a.length];
@@ -110,37 +106,25 @@
     document.getElementById('fileInput').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const content = e.target.result;
-            parseVocabulary(content);
-        };
+        reader.onload = (e) => parseVocabulary(e.target.result);
         reader.readAsText(file);
     });
 
     function parseVocabulary(text) {
         const lines = text.split('\n');
         vocabList = [];
-
         for (let line of lines) {
             let parts = line.split(',');
             if (parts.length >= 2) {
-                vocabList.push({ 
-                    question: parts[0].trim(), 
-                    answer: parts[1].trim() 
-                });
+                vocabList.push({ question: parts[0].trim(), answer: parts[1].trim() });
             }
         }
-
         if (vocabList.length > 0) {
             vocabList.sort(() => Math.random() - 0.5);
-            currentIndex = 0;
             document.getElementById('upload-section').style.display = 'none';
             document.getElementById('quiz-section').style.display = 'block';
             showNextWord();
-        } else {
-            alert('Keine gültigen Vokabeln gefunden. Bitte überprüfe das Format (Wort,Übersetzung).');
         }
     }
 
@@ -151,66 +135,60 @@
             document.getElementById('answer-input').focus();
             updateProgress();
         } else {
-            document.getElementById('word-display').innerText = "🎉 Alle Vokabeln geschafft!";
+            document.getElementById('word-display').innerText = "Geschafft! 🏆";
             document.getElementById('answer-input').style.display = 'none';
-            document.querySelector('#quiz-section button').style.display = 'none';
-            document.getElementById('feedback').innerText = '';
+            document.querySelector('button').style.display = 'none';
         }
     }
 
     function checkAnswer() {
-        // Eingaben bereinigen (Leerzeichen am Rand weg, alles kleinbuchstaben)
-        const userAnswer = document.getElementById('answer-input').value.trim().toLowerCase();
-        const correctAnswer = vocabList[currentIndex].answer.toLowerCase();
-        const feedbackEl = document.getElementById('feedback');
-
-        // Berechne Tippfehler
-        const distance = getEditDistance(userAnswer, correctAnswer);
+        const userIn = document.getElementById('answer-input').value.trim().toLowerCase();
+        const fullAnswer = vocabList[currentIndex].answer;
         
-        // Erlaubte Fehler basierend auf der Wortlänge
-        let allowedDistance = 0;
-        if (correctAnswer.length > 3 && correctAnswer.length <= 7) allowedDistance = 1;
-        if (correctAnswer.length > 7) allowedDistance = 2;
+        // Trenne die richtigen Antworten an Semikolon oder Schrägstrich
+        const possibleAnswers = fullAnswer.split(/[;/]/).map(s => s.trim().toLowerCase());
+        
+        let bestMatch = { distance: 999, word: "" };
 
-        if (distance === 0) {
-            // Exakt richtig
-            feedbackEl.innerText = "Richtig! ✅";
-            feedbackEl.className = "correct";
-            currentIndex++;
-            setTimeout(() => {
-                feedbackEl.innerText = "";
-                showNextWord();
-            }, 1000);
-        } else if (distance <= allowedDistance) {
-            // Fast richtig (Tippfehler verziehen)
-            feedbackEl.innerHTML = `Fast perfekt! ✅<br><small>Die exakte Schreibweise ist: <b>${vocabList[currentIndex].answer}</b></small>`;
-            feedbackEl.className = "almost-correct";
-            currentIndex++;
-            setTimeout(() => {
-                feedbackEl.innerText = "";
-                showNextWord();
-            }, 2500); // Etwas länger warten, damit man die richtige Schreibweise lesen kann
+        // Suche die am nächsten liegende korrekte Teil-Antwort
+        possibleAnswers.forEach(alt => {
+            const dist = getEditDistance(userIn, alt);
+            if (dist < bestMatch.distance) {
+                bestMatch = { distance: dist, word: alt };
+            }
+        });
+
+        const feedbackEl = document.getElementById('feedback');
+        let allowedDist = bestMatch.word.length > 7 ? 2 : (bestMatch.word.length > 3 ? 1 : 0);
+
+        if (bestMatch.distance === 0) {
+            feedbackEl.innerHTML = "<span class='correct'>Richtig! ✅</span>";
+            if (possibleAnswers.length > 1) feedbackEl.innerHTML += `<br><small>Auch richtig: ${fullAnswer}</small>`;
+            advance();
+        } else if (bestMatch.distance <= allowedDist) {
+            feedbackEl.innerHTML = `<span class='almost-correct'>Fast richtig! (Tippfehler) ✅</span><br><small>Gemeint war: <b>${fullAnswer}</b></small>`;
+            advance();
         } else {
-            // Falsch
-            feedbackEl.innerHTML = `Falsch! ❌<br><small>Die richtige Antwort ist: <b>${vocabList[currentIndex].answer}</b></small>`;
-            feedbackEl.className = "incorrect";
-            vocabList.push(vocabList[currentIndex]);
-            currentIndex++;
-            setTimeout(() => {
-                feedbackEl.innerText = "";
-                showNextWord();
-            }, 2500);
+            feedbackEl.innerHTML = `<span class='incorrect'>Leider falsch! ❌</span><br><small>Korrekte Lösung: <b>${fullAnswer}</b></small>`;
+            vocabList.push(vocabList[currentIndex]); // Wort wiederholen
+            advance();
         }
+    }
+
+    function advance() {
+        currentIndex++;
+        setTimeout(() => {
+            document.getElementById('feedback').innerHTML = "";
+            showNextWord();
+        }, 2500);
     }
 
     function updateProgress() {
         document.getElementById('progress').innerText = `Vokabel ${currentIndex + 1} von ${vocabList.length}`;
     }
 
-    document.getElementById('answer-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            checkAnswer();
-        }
+    document.getElementById('answer-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkAnswer();
     });
 </script>
 
